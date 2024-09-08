@@ -1,0 +1,26 @@
+[package]
+name = "gd32f4_rs_test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+#
+[[bin]]
+name = "blinky"
+path = "src/bin/blinky.rs"
+test = false
+bench = false
+
+# Set up the release profile to optimize our binaries
+[profile.release]
+codegen-units = 1 # better optimizations
+debug = true      # symbols are nice and they don't increase the size on Flash
+lto = true        # better optimizations
+opt-level = "s"   # Optimize for size
+
+[dependencies]
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7"
+gd32f4 = { path = "../gd32-rs/gd32f4", features = ["rt", "gd32f425"] }
+panic-probe = { version = "0.3" }
+libm = "0.2.8"
