@@ -81,9 +81,9 @@ fn system_init() {
         }
     }
 
-    // Configure CFG0
-    // rcu.cfg0()
-    //     .modify(|_, w| unsafe{ w.scs(0b00 as u8) });
+    // Clear the SCSS bits
+    rcu.cfg0().modify(|_, w| unsafe { w.scs().bits(0b00) });
+
     /* Reset HXTALEN, CKMEN and PLLEN bits */
     rcu.ctl0().modify(|_, w| {
         w.hxtalen()
