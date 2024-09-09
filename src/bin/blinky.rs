@@ -55,7 +55,7 @@ fn main() -> ! {
         gpio_c.octl().modify(|_, w| w.octl2().set_bit());
 
         // Delay for a bit
-        for _ in 0..50000 {
+        for _ in 0..500000 {
             unsafe {
                 asm!("nop");
             }
@@ -66,7 +66,7 @@ fn main() -> ! {
         gpio_c.octl().modify(|_, w| w.octl2().clear_bit());
 
         // More delay
-        for _ in 0..50000 {
+        for _ in 0..500000 {
             unsafe {
                 asm!("nop");
             }
@@ -112,7 +112,7 @@ fn system_init() {
     rcu.ctl0().modify(|_, w| w.irc16men().set_bit());
 
     rcu.cfg0()
-        .modify(|_, w| unsafe { w.ahbpsc().bits(8 as u8) });
+        .modify(|_, w| unsafe { w.ahbpsc().bits(0b1000) });
 
     // Spin for 50000 cycles
     for _ in 0..50000 {
@@ -122,7 +122,7 @@ fn system_init() {
     }
 
     rcu.cfg0()
-        .modify(|_, w| unsafe { w.ahbpsc().bits(9 as u8) });
+        .modify(|_, w| unsafe { w.ahbpsc().bits(0b1001) });
 
     // Spin for 50000 cycles
     for _ in 0..50000 {
@@ -148,7 +148,7 @@ fn system_init() {
     rcu.ctl0().modify(|_, w| w.hxtalbps().clear_bit());
 
     /* Reset CFG0 register */
-    rcu.cfg0().reset();
+    rcu.cfg0().modify(|_, w| unsafe { w.bits(0x00000000) });
 
     // Wait until IRC16M is selected as system clock
     while rcu.cfg0().read().scs().bits() != 0b00 {}
@@ -166,15 +166,17 @@ fn system_init() {
 
     /* wait until HXTAL is stable or the startup time is longer than HXTAL_STARTUP_TIMEOUT */
     let mut timeout: u32 = 0;
-    while rcu.ctl0().read().hxtalstb().bit_is_clear() {
+    let mut stab_flag: u32 = 0;
+    loop {
         timeout += 1;
-        if timeout > 100000 {
+        stab_flag = rcu.ctl0().read().hxtalstb().bit() as u32;
+        if !((stab_flag == 0) && (timeout != 0xFFFF)) {
             break;
         }
     }
 
     // If that failed
-    if timeout > 100000 {
+    if rcu.ctl0().read().hxtalstb().bit_is_clear() {
         panic!("HXTAL failed to start");
     }
 
@@ -222,6 +224,9 @@ fn system_init() {
     // Wait until the high-drive is stable
     while pmu.cs().read().hdsrf().bit_is_clear() {}
 
+    // Set PLL as system clock
+    rcu.cfg0().modify(|_, w| unsafe {w.scs().bits(0b10) });
+
     // Wait until PLL is selected as the system clock
-    while rcu.cfg0().read().scss().bits() == 0b00 {}
+    while rcu.cfg0().read().scss().bits() == 0b10 {}
 }
