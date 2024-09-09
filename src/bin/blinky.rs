@@ -2,7 +2,7 @@
 #![no_main]
 
 use cortex_m_rt::entry;
-use gd32f4::gd32f425::{self as pac, Pmu, Rcu};
+use gd32f4::gd32f425::{Pmu, Rcu};
 // use gd32f4::gd32f425::rcu:
 use core::arch::asm;
 use libm::sinf;
@@ -41,17 +41,24 @@ fn main() -> ! {
 
     let mut time: f32 = 0.0;
     let mut ctr: u32 = 0;
-    let mut sin: f32 = 0.0;
+    // let mut sin: f32 = 0.0;
 
     loop {
         // application logic
         //
         // Increment the counter
         ctr += 1;
-        time = ctr as f32 * 0.01;
+        if time == 0.0 {
+            time = 0.01;
+        } else {
+            time = ctr as f32 * 0.01;
+        }
     }
 }
 
+/// The system init function tranlsated from system_gd32f4xx.c
+/// from the GD32F4xx firmware library. All magic numbers are
+/// taken from the GD32F4xx firmware library.
 fn system_init() {
     // Create a handle to the RCU peripheral
     let rcu = unsafe { Rcu::steal() };
