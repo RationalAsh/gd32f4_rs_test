@@ -2,7 +2,7 @@
 #![no_main]
 
 use cortex_m_rt::entry;
-use gd32f4::gd32f425::{Pmu, Rcu};
+use gd32f4::gd32f425::{Gpioc, Pmu, Rcu};
 // use gd32f4::gd32f425::rcu:
 use core::arch::asm;
 use libm::sinf;
@@ -39,21 +39,64 @@ fn main() -> ! {
     // initialization
     system_init();
 
-    let mut time: f32 = 0.0;
+    // Set up our peripherals
+    setup_peripherals();
+
+    // let mut time: f32 = 0.0;
     let mut ctr: u32 = 0;
     // let mut sin: f32 = 0.0;
 
+    // Toggle the LED
+    let gpio_c = unsafe { Gpioc::steal() };
+
     loop {
-        // application logic
-        //
-        // Increment the counter
-        ctr += 1;
-        if time == 0.0 {
-            time = 0.01;
-        } else {
-            time = ctr as f32 * 0.01;
+        // Set the LEDs high
+        gpio_c.octl().modify(|_, w| w.octl1().set_bit());
+        gpio_c.octl().modify(|_, w| w.octl2().set_bit());
+
+        // Delay for a bit
+        for _ in 0..50000 {
+            unsafe {
+                asm!("nop");
+            }
+        }
+
+        // Set the LEDs low
+        gpio_c.octl().modify(|_, w| w.octl1().clear_bit());
+        gpio_c.octl().modify(|_, w| w.octl2().clear_bit());
+
+        // More delay
+        for _ in 0..50000 {
+            unsafe {
+                asm!("nop");
+            }
         }
     }
+}
+
+/// Set up our peripherals.
+fn setup_peripherals() {
+    let rcu = unsafe { Rcu::steal() };
+
+    // Enable the GPIOA peripheral
+    rcu.ahb1en().modify(|_, w| w.paen().set_bit());
+    // Enable the GPIOB peripheral
+    rcu.ahb1en().modify(|_, w| w.pben().set_bit());
+    // Enable the GPIOC peripheral
+    rcu.ahb1en().modify(|_, w| w.pcen().set_bit());
+
+    // Configure GPIOC pins 1 and 2 as LED outputs
+    let gpio_c = unsafe { Gpioc::steal() };
+    gpio_c.ctl().modify(|_, w| unsafe { w.ctl1().bits(0b01) });
+    gpio_c.ctl().modify(|_, w| unsafe { w.ctl2().bits(0b01) });
+
+    // Set outputs speed to max
+    gpio_c.ospd().modify(|_, w| unsafe { w.ospd1().bits(0b11) });
+    gpio_c.ospd().modify(|_, w| unsafe { w.ospd2().bits(0b11) });
+
+    // Set outputs low to start
+    gpio_c.octl().modify(|_, w| w.octl1().clear_bit());
+    gpio_c.octl().modify(|_, w| w.octl2().clear_bit());
 }
 
 /// The system init function tranlsated from system_gd32f4xx.c
